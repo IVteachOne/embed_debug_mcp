@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "embed-debug-mcp"
 version = "0.1.0"
 description = "MCP Server for embedded device debugging via serial port and SSH"
-readme = "README.md"
+readme = "../README.md"
 license = "MIT"
 requires-python = ">=3.10"
 dependencies = [

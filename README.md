@@ -123,11 +123,89 @@ serial_read(device="my_board")
 ssh_exec(device="remote_box", command="uptime")
 ```
 
+## Remote SSE Deployment (跨机器使用)
+
+当 MCP Server 运行在一台机器上（如 Windows 接串口），Client 在另一台机器上（如 Ubuntu 写代码）时，使用 SSE transport。
+
+### 架构图
+
+```
+Ubuntu (写代码)                     Windows (接设备)
+┌──────────────────┐                ┌────────────────────┐
+│  Claude Code     │                │  embed-debug-mcp   │
+│                  │   HTTP SSE     │  --transport sse   │
+│  settings.json:  │   over LAN     │  --host 0.0.0.0    │
+│    "url": "http://│──────────────►│  --port 8765       │
+│     192.168.1.50 │   :8765/sse   │  pyserial → COM3   │
+│     :8765/sse"   │                │  paramiko → SSH    │
+└──────────────────┘                └────────────────────┘
+```
+
+### Server 端（Windows）
+
+```powershell
+# 1. 安装依赖
+cd embed_debug_mcp/src
+uv sync
+
+# 2. 查看本机 IP
+ipconfig
+# 假设得到 192.168.1.50
+
+# 3. 启动 SSE 模式（监听所有网卡）
+uv run embed-debug-mcp --transport sse --host 0.0.0.0 --port 8765
+
+# 4. 可选：同时加载设备配置
+uv run embed-debug-mcp --transport sse --host 0.0.0.0 --port 8765 --devices devices.yaml
+```
+
+### Windows 防火墙放行
+
+```powershell
+# 以管理员权限运行
+New-NetFirewallRule -DisplayName "Embed Debug MCP" -Direction Inbound -LocalPort 8765 -Protocol TCP -Action Allow
+```
+
+### Client 端（Ubuntu）
+
+Claude Code `~/.claude/settings.json`：
+
+```json
+{
+  "mcpServers": {
+    "embed-debug": {
+      "url": "http://192.168.1.50:8765/sse"
+    }
+  }
+}
+```
+
+Cursor `.vscode/mcp.json`：
+
+```json
+{
+  "servers": {
+    "embed-debug": {
+      "url": "http://192.168.1.50:8765/sse"
+    }
+  }
+}
+```
+
+### 安全注意
+
+- SSE 模式默认**无认证**，仅限受信任的内网环境
+- 如需认证，建议部署在 Nginx/反向代理后面加 Bearer Token
+- 或使用 Tailscale/ZeroTier 等 VPN 方案，不暴露到公网
+
 ## CLI Options
 
 ```
 --devices PATH      Path to devices.yaml config file
 --idle-timeout SEC  Auto-close idle connections after N seconds (default: 300)
+--transport MODE    Transport: "stdio" (default, local) or "sse" (remote)
+--host ADDR         Host to bind (only for sse, default: 127.0.0.1)
+--port PORT         Port to listen (only for sse, default: 8765)
 ```
 
 ## Architecture

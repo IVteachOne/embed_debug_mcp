@@ -1,0 +1,23 @@
+# Device profiles for embed-debug-mcp
+# Each device can be referenced by name in MCP tool calls.
+
+devices:
+  # Example: Serial-connected board
+  my_board:
+    type: serial
+    port: /dev/ttyUSB0
+    baudrate: 115200
+
+  # Example: SSH-connected device (key auth)
+  remote_box:
+    type: ssh
+    host: 192.168.1.100
+    username: root
+    key_file: ~/.ssh/id_rsa
+
+  # Example: SSH-connected device (password auth)
+  test_device:
+    type: ssh
+    host: 192.168.1.200
+    username: admin
+    password: admin123
